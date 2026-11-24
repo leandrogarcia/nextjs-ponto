@@ -64,6 +64,24 @@ describe("usuários", () => {
     expect(g.perfil).toBe("gerencia");
   });
 
+  it("cadastro que perdeu a trava para outro não salva um segundo gerente", async () => {
+    const { deps, root } = await setup();
+    const { Timestamp } = await import("firebase-admin/firestore");
+    const lock = deps.db.doc("settings/first-manager-lock");
+    const slowAuth = Object.create(deps.auth) as typeof deps.auth;
+    // simula a trava expirando e sendo retomada enquanto este cadastro ainda está no Auth
+    slowAuth.setCustomUserClaims = async (...args) => {
+      await lock.set({ criadoEm: Timestamp.now(), token: "outra-requisicao" });
+      return deps.auth.setCustomUserClaims(...args);
+    };
+    await expect(
+      createUser({ ...deps, auth: slowAuth }, root, { nome: "G", email: "g@x.com", senha: "123456", perfil: "gerencia" }),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(await listUsers(deps, { perfil: "gerencia" })).toHaveLength(0);
+    await expect(deps.auth.getUserByEmail("g@x.com")).rejects.toBeTruthy();
+    expect((await lock.get()).get("token")).toBe("outra-requisicao");
+  });
+
   it("gerente cria, edita, desativa e exclui funcionários", async () => {
     const { deps, root } = await setup();
     const g = await createUser(deps, root, { nome: "Gerente", email: "g@x.com", senha: "123456", perfil: "gerencia" });

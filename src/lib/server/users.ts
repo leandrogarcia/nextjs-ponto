@@ -1,4 +1,5 @@
-import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { randomUUID } from "node:crypto";
+import { FieldValue, Timestamp, type DocumentReference } from "firebase-admin/firestore";
 import { AppError, toAppError } from "../errors";
 import { assignableRoles, isRole, type Role } from "../roles";
 import type { CreateUserInput, UpdateUserInput } from "../schemas";
@@ -50,6 +51,14 @@ export async function hasManager({ db }: Pick<Deps, "db">) {
 
 const FIRST_MANAGER_LOCK_TTL_MS = 2 * 60 * 1000;
 
+async function releaseFirstManagerLock(db: Deps["db"], lockRef: DocumentReference, token: string) {
+  await db
+    .runTransaction(async (tx) => {
+      if ((await tx.get(lockRef)).get("token") === token) tx.delete(lockRef);
+    })
+    .catch(() => undefined);
+}
+
 export async function createUser(deps: Deps, actor: Actor, input: CreateUserInput) {
   const { db, auth } = deps;
   const allowed = assignableRoles(actor.perfil, actor.perfil === "root" ? await hasManager(deps) : true);
@@ -61,16 +70,17 @@ export async function createUser(deps: Deps, actor: Actor, input: CreateUserInpu
   }
 
   // Trava para duas requisições simultâneas do root não criarem dois gerentes.
+  // Uma trava antiga (requisição interrompida) pode ser retomada; o perfil só é
+  // salvo se a trava ainda for desta requisição e nenhum gerente existir.
   const lockRef = actor.perfil === "root" ? db.collection(COLLECTIONS.settings).doc(FIRST_MANAGER_LOCK_DOC) : null;
-  // Uma trava antiga sem gerente salvo (requisição interrompida) pode ser retomada.
+  const lockToken = randomUUID();
+  const rootDenied = () => new AppError(403, "O root só pode cadastrar o primeiro gerente.");
   if (lockRef) {
     await db.runTransaction(async (tx) => {
       const lock = await tx.get(lockRef);
       const since = (lock.get("criadoEm") as Timestamp | undefined)?.toMillis() ?? 0;
-      if (lock.exists && Date.now() - since < FIRST_MANAGER_LOCK_TTL_MS) {
-        throw new AppError(403, "O root só pode cadastrar o primeiro gerente.");
-      }
-      tx.set(lockRef, { criadoEm: Timestamp.now() });
+      if (lock.exists && Date.now() - since < FIRST_MANAGER_LOCK_TTL_MS) throw rootDenied();
+      tx.set(lockRef, { criadoEm: Timestamp.now(), token: lockToken });
     });
   }
 
@@ -79,18 +89,31 @@ export async function createUser(deps: Deps, actor: Actor, input: CreateUserInpu
     const record = await auth.createUser({ email: input.email, password: input.senha, displayName: input.nome });
     uid = record.uid;
     await auth.setCustomUserClaims(uid, { role: input.perfil });
-    await db.collection(COLLECTIONS.users).doc(uid).set({
+    const userRef = db.collection(COLLECTIONS.users).doc(uid);
+    const profile = {
       uid,
       nome: input.nome,
       email: input.email,
       perfil: input.perfil,
       ativo: true,
       criadoEm: FieldValue.serverTimestamp(),
-    });
+    };
+    if (lockRef) {
+      await db.runTransaction(async (tx) => {
+        const [lock, managers] = await Promise.all([
+          tx.get(lockRef),
+          tx.get(db.collection(COLLECTIONS.users).where("perfil", "==", "gerencia").limit(1)),
+        ]);
+        if (lock.get("token") !== lockToken || !managers.empty) throw rootDenied();
+        tx.set(userRef, profile);
+      });
+    } else {
+      await userRef.set(profile);
+    }
     return (await getUser(deps, uid))!;
   } catch (err) {
     if (uid) await auth.deleteUser(uid).catch(() => undefined);
-    if (lockRef) await lockRef.delete().catch(() => undefined);
+    if (lockRef) await releaseFirstManagerLock(db, lockRef, lockToken);
     throw toAppError(err);
   }
 }
