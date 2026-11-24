@@ -12,6 +12,8 @@ Fuso: `America/Sao_Paulo`. Horas esperadas por dia útil = jornada semanal ÷ 5 
 
 Requer Node 22 (fixado em `.nvmrc` e em `engines`) e Java 21+ (para o emulador do Firestore).
 
+O SDK web do Firebase fica na linha 12 (e `@firebase/rules-unit-testing` na 5), com `overrides` no `package.json` para pacotes `@firebase/*` internos: as versões seguintes exigem Node 24.12+.
+
 ```bash
 nvm use               # Node 22
 npm install
