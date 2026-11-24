@@ -1,0 +1,52 @@
+rules_version = '2';
+
+// Toda escrita passa pelos Route Handlers com o Admin SDK, que ignora estas
+// regras. O cliente só pode ler o que o perfil permite. O perfil vem do
+// documento users/{uid} (não da custom claim), para desativação e troca de
+// perfil valerem imediatamente mesmo com um ID token ainda válido.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function userPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+    function active() {
+      return signedIn() && exists(userPath()) && get(userPath()).data.ativo == true;
+    }
+    function hasRole(role) {
+      return active() && get(userPath()).data.perfil == role;
+    }
+    function isManager() {
+      return hasRole('gerencia');
+    }
+    function isSelf(uid) {
+      return active() && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read: if isSelf(uid) || isManager() || hasRole('root');
+      allow write: if false;
+    }
+
+    match /workSchedules/{uid} {
+      allow read: if isSelf(uid) || isManager();
+      allow write: if false;
+    }
+
+    match /timeEntries/{entryId} {
+      allow read: if isManager() || (active() && resource.data.uid == request.auth.uid);
+      allow write: if false;
+    }
+
+    match /settings/{docId} {
+      allow read: if isManager() || hasRole('root');
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
