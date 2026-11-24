@@ -46,7 +46,7 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-4">
+    <form method="post" onSubmit={onSubmit} className="grid gap-4">
       <FormField label="E-mail" htmlFor="email">
         <Input id="email" name="email" type="email" autoComplete="email" required />
       </FormField>

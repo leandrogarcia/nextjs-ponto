@@ -30,7 +30,7 @@ export function FirstManagerForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-4">
+    <form method="post" onSubmit={onSubmit} className="grid gap-4">
       <FormField label="Nome" htmlFor="nome">
         <Input id="nome" name="nome" required />
       </FormField>

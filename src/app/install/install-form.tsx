@@ -30,7 +30,7 @@ export function InstallForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-4">
+    <form method="post" onSubmit={onSubmit} className="grid gap-4">
       <FormField label="Segredo de instalação" htmlFor="secret">
         <Input id="secret" name="secret" type="password" required />
       </FormField>

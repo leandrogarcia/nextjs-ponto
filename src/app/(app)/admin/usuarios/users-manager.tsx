@@ -196,7 +196,7 @@ function UserDialog({
             {user ? "Deixe a senha em branco para mantê-la." : "O usuário entra com este e-mail e senha."}
           </DialogDescription>
         </DialogHeader>
-        <form key={user?.uid ?? "new"} onSubmit={onSubmit} className="grid gap-4">
+        <form key={user?.uid ?? "new"} method="post" onSubmit={onSubmit} className="grid gap-4">
           <FormField label="Nome" htmlFor="nome">
             <Input id="nome" name="nome" defaultValue={user?.nome} required />
           </FormField>
