@@ -1,4 +1,4 @@
-import { daysBetween, isWorkday } from "./time";
+import { daysBetween, isWorkday, weekdayOf } from "./time";
 
 export type EntryType = "entrada" | "saida";
 
@@ -59,9 +59,16 @@ export function totalWorked(days: DaySummary[]) {
   return days.reduce((acc, d) => acc + d.workedMinutes, 0);
 }
 
-/** Horas esperadas por dia útil: jornada semanal / 5, de segunda a sexta. */
+/**
+ * Horas esperadas por dia útil: jornada semanal / 5, de segunda a sexta. Os
+ * minutos que sobram da divisão vão para os primeiros dias da semana, para a
+ * soma da semana bater exatamente com a jornada.
+ */
 export function expectedMinutesForDay(dateKey: string, weeklyHours: number) {
-  return isWorkday(dateKey) ? Math.round((weeklyHours * 60) / 5) : 0;
+  if (!isWorkday(dateKey)) return 0;
+  const weekly = Math.round(weeklyHours * 60);
+  const base = Math.floor(weekly / 5);
+  return base + (weekdayOf(dateKey) <= weekly - base * 5 ? 1 : 0);
 }
 
 export interface ReportRow extends DaySummary {
@@ -76,8 +83,8 @@ export interface ReportTotals {
 }
 
 /**
- * Linhas do relatório de frequência. Dias depois de `today` não contam como
- * horas esperadas, para o saldo de um período em andamento não ficar negativo.
+ * Linhas do relatório de frequência. Dias depois de `today` e antes de
+ * `startDate` (cadastro do funcionário) não contam como horas esperadas.
  */
 export function buildReport(
   entries: TimeEntry[],
@@ -85,9 +92,10 @@ export function buildReport(
   end: string,
   weeklyHours: number,
   today: string,
+  startDate = "",
 ): { rows: ReportRow[]; totals: ReportTotals } {
   const rows = summarizePeriod(entries, start, end).map((d) => {
-    const expected = d.dateKey <= today ? expectedMinutesForDay(d.dateKey, weeklyHours) : 0;
+    const expected = d.dateKey <= today && d.dateKey >= startDate ? expectedMinutesForDay(d.dateKey, weeklyHours) : 0;
     return { ...d, expectedMinutes: expected, balanceMinutes: d.workedMinutes - expected };
   });
   const totals = rows.reduce<ReportTotals>(

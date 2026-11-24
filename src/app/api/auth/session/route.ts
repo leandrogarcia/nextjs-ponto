@@ -14,8 +14,17 @@ const cookieOptions = {
 };
 
 /** Troca o ID token do Firebase Auth por um cookie de sessão httpOnly. */
+/** Bloqueia formulários de outros sites (login CSRF): exige JSON e Origin do próprio host. */
+function assertSameOrigin(request: Request) {
+  if (!request.headers.get("content-type")?.startsWith("application/json")) throw new AppError(415, "Formato inválido.");
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  if (origin && new URL(origin).host !== host) throw new AppError(403, "Origem não permitida.");
+}
+
 export async function POST(request: Request) {
   try {
+    assertSameOrigin(request);
     const parsed = sessionSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) throw new AppError(400, "Token ausente.");
     const decoded = await adminAuth()

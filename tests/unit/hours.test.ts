@@ -74,6 +74,17 @@ describe("relatório e saldo", () => {
     expect(expectedMinutesForDay("2026-11-23", 44)).toBe(528);
   });
 
+  it("distribui os minutos da jornada sem perder arredondamento", () => {
+    const week = ["2026-11-23", "2026-11-24", "2026-11-25", "2026-11-26", "2026-11-27"];
+    expect(week.map((d) => expectedMinutesForDay(d, 37.6))).toEqual([452, 451, 451, 451, 451]);
+    expect(week.reduce((acc, d) => acc + expectedMinutesForDay(d, 37.6), 0)).toBe(2256);
+  });
+
+  it("não cobra horas antes do cadastro do funcionário", () => {
+    const { totals } = buildReport([], "2026-11-23", "2026-11-27", 40, "2026-11-30", "2026-11-25");
+    expect(totals.expectedMinutes).toBe(3 * 480);
+  });
+
   it("calcula trabalhadas, esperadas e saldo", () => {
     const entries = [
       e("entrada", "2026-11-23T08:00:00-03:00"),

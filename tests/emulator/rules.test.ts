@@ -25,8 +25,11 @@ beforeEach(async () => {
   await env.clearFirestore();
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
-    await setDoc(doc(db, "users/f1"), { uid: "f1", perfil: "funcionario" });
-    await setDoc(doc(db, "users/f2"), { uid: "f2", perfil: "funcionario" });
+    await setDoc(doc(db, "users/f1"), { uid: "f1", perfil: "funcionario", ativo: true });
+    await setDoc(doc(db, "users/f2"), { uid: "f2", perfil: "funcionario", ativo: true });
+    await setDoc(doc(db, "users/g1"), { uid: "g1", perfil: "gerencia", ativo: true });
+    await setDoc(doc(db, "users/g2"), { uid: "g2", perfil: "gerencia", ativo: false });
+    await setDoc(doc(db, "users/g3"), { uid: "g3", perfil: "funcionario", ativo: true });
     await setDoc(doc(db, "timeEntries/e1"), { uid: "f1", tipo: "entrada", dateKey: "2026-11-23" });
     await setDoc(doc(db, "timeEntries/e2"), { uid: "f2", tipo: "entrada", dateKey: "2026-11-23" });
     await setDoc(doc(db, "workSchedules/f1"), { uid: "f1", horasSemanais: 40 });
@@ -61,6 +64,16 @@ describe("regras do Firestore", () => {
     await assertSucceeds(getDoc(doc(gerente(), "users/f2")));
     await assertSucceeds(getDoc(doc(gerente(), "workSchedules/f1")));
     await assertFails(setDoc(doc(gerente(), "workSchedules/f1"), { horasSemanais: 10 }));
+  });
+
+  it("perfil e desativação valem mesmo com claim antiga no token", async () => {
+    const desativado = env.authenticatedContext("g2", { role: "gerencia" }).firestore();
+    const rebaixado = env.authenticatedContext("g3", { role: "gerencia" }).firestore();
+    const semCadastro = env.authenticatedContext("x", { role: "gerencia" }).firestore();
+    for (const db of [desativado, rebaixado, semCadastro]) {
+      await assertFails(getDocs(collection(db, "timeEntries")));
+      await assertFails(getDoc(doc(db, "users/f1")));
+    }
   });
 
   it("anônimo não lê nada", async () => {

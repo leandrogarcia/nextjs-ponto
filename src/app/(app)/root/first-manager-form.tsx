@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 import { FormField } from "@/components/form-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -14,7 +14,9 @@ export function FirstManagerForm() {
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
-  function onSubmit(form: FormData) {
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
     setError(null);
     start(async () => {
       try {
@@ -28,7 +30,7 @@ export function FirstManagerForm() {
   }
 
   return (
-    <form action={onSubmit} className="grid gap-4">
+    <form onSubmit={onSubmit} className="grid gap-4">
       <FormField label="Nome" htmlFor="nome">
         <Input id="nome" name="nome" required />
       </FormField>

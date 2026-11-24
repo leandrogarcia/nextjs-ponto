@@ -44,7 +44,12 @@ export async function listEntries({ db }: Pick<Deps, "db">, uid: string, start: 
  * Registra uma marcação com o horário do servidor. O tipo alterna conforme a
  * última marcação do dia, dentro de uma transação para evitar cliques duplos.
  */
-export async function recordPunch({ db }: Pick<Deps, "db">, uid: string, now = new Date()) {
+export async function recordPunch(
+  { db }: Pick<Deps, "db">,
+  uid: string,
+  now = new Date(),
+  expected?: { tipo: EntryType; dateKey: string },
+) {
   const dateKey = toDateKey(now);
   const col = db.collection(COLLECTIONS.timeEntries);
   return db.runTransaction(async (tx) => {
@@ -54,6 +59,10 @@ export async function recordPunch({ db }: Pick<Deps, "db">, uid: string, now = n
       throw new AppError(429, `Aguarde ${MIN_PUNCH_INTERVAL_SECONDS} segundos entre marcações.`);
     }
     const tipo = nextEntryType(last);
+    // A tela mostrava outro dia ou outra ação (página aberta antes da meia-noite, outra aba).
+    if (expected && (expected.dateKey !== dateKey || expected.tipo !== tipo)) {
+      throw new AppError(409, "A tela estava desatualizada. Confira a próxima marcação e tente novamente.");
+    }
     const ref = col.doc();
     const entry = { uid, tipo, timestamp: Timestamp.fromDate(now), dateKey };
     tx.create(ref, entry);

@@ -39,6 +39,8 @@ export const sessionSchema = z.object({ idToken: z.string().min(1) });
 export const dateKeySchema = z.string().refine(isDateKey, { error: "Data inválida (AAAA-MM-DD)." });
 export const monthKeySchema = z.string().refine(isMonthKey, { error: "Mês inválido (AAAA-MM)." });
 
+export const punchSchema = z.object({ tipo: z.enum(["entrada", "saida"]), dateKey: dateKeySchema });
+
 export const MAX_REPORT_DAYS = 366;
 
 export const reportQuerySchema = z

@@ -21,12 +21,18 @@ export async function getAttendanceReport(deps: Pick<Deps, "db">, uid: string, i
   if (!user || user.perfil !== "funcionario") throw new AppError(404, "Funcionário não encontrado.");
   const [schedule, entries] = await Promise.all([getSchedule(deps, uid), listEntries(deps, uid, inicio, fim)]);
   const horasSemanais = schedule?.horasSemanais ?? 0;
-  const { rows, totals } = buildReport(entries, inicio, fim, horasSemanais, toDateKey(now));
+  const startDate = user.criadoEm ? toDateKey(new Date(user.criadoEm)) : undefined;
+  const { rows, totals } = buildReport(entries, inicio, fim, horasSemanais, toDateKey(now), startDate);
   return { user, inicio, fim, horasSemanais, rows, totals, geradoEm: now } satisfies AttendanceReport;
 }
 
 export function entriesLabel(row: ReportRow) {
   return row.entries.map((e) => `${e.tipo === "entrada" ? "E" : "S"} ${formatTime(e.timestamp)}`).join(" · ");
+}
+
+/** Impede que textos digitados virem fórmulas ao abrir o CSV numa planilha. */
+function plainText(value: string) {
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
 }
 
 function csvCell(value: string) {
@@ -36,8 +42,8 @@ function csvCell(value: string) {
 /** CSV separado por ponto e vírgula, com BOM, para abrir direto no Excel em pt-BR. */
 export function reportToCsv(report: AttendanceReport) {
   const lines = [
-    ["Funcionário", report.user.nome],
-    ["E-mail", report.user.email],
+    ["Funcionário", plainText(report.user.nome)],
+    ["E-mail", plainText(report.user.email)],
     ["Período", `${formatDateKey(report.inicio)} a ${formatDateKey(report.fim)}`],
     ["Jornada semanal (h)", String(report.horasSemanais)],
     [],

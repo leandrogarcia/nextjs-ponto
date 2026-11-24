@@ -1,7 +1,7 @@
 export const TIME_ZONE = "America/Sao_Paulo";
 
-const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
-const MONTH_KEY_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+const DATE_KEY_RE = /^(19|20)\d{2}-\d{2}-\d{2}$/;
+const MONTH_KEY_RE = /^(19|20)\d{2}-(0[1-9]|1[0-2])$/;
 
 export function isDateKey(value: string) {
   if (!DATE_KEY_RE.test(value)) return false;

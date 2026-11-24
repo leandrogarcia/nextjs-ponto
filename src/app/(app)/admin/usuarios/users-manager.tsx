@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 import { FormField } from "@/components/form-field";
 import { NativeSelect } from "@/components/native-select";
@@ -152,7 +152,9 @@ function UserDialog({
   const [pending, start] = useTransition();
   const user = editing?.mode === "edit" ? editing.user : null;
 
-  function onSubmit(form: FormData) {
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
     setError(null);
     const data = Object.fromEntries(form) as Record<string, string>;
     start(async () => {
@@ -194,7 +196,7 @@ function UserDialog({
             {user ? "Deixe a senha em branco para mantê-la." : "O usuário entra com este e-mail e senha."}
           </DialogDescription>
         </DialogHeader>
-        <form key={user?.uid ?? "new"} action={onSubmit} className="grid gap-4">
+        <form key={user?.uid ?? "new"} onSubmit={onSubmit} className="grid gap-4">
           <FormField label="Nome" htmlFor="nome">
             <Input id="nome" name="nome" defaultValue={user?.nome} required />
           </FormField>

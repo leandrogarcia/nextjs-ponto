@@ -30,6 +30,14 @@ describe("reportToCsv", () => {
     expect(lines).toContain("24/11/2026;Ter;;00:00;08:00;-08:00");
     expect(lines.at(-1)).toBe("Total;;;09:30;16:00;-06:30");
   });
+
+
+  it("neutraliza textos que virariam fórmulas na planilha", () => {
+    const r = { ...report(), user: { ...report().user, nome: "=HYPERLINK(\"x\")", email: "+1@x.com" } };
+    const lines = reportToCsv(r).trim().split("\r\n");
+    expect(lines[0]).toBe('Funcionário;"\'=HYPERLINK(""x"")"');
+    expect(lines[1]).toBe("E-mail;'+1@x.com");
+  });
 });
 
 describe("reportFileName", () => {

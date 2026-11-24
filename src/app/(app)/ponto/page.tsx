@@ -31,7 +31,7 @@ export default async function PontoPage() {
                 : `Última saída às ${formatTime(last.timestamp)}.`
               : "Nenhuma marcação hoje."}
           </p>
-          <PunchButton next={next} />
+          <PunchButton next={next} dateKey={today} />
           <p className="text-xs text-muted-foreground">
             O horário é registrado pelo servidor no momento do clique e não pode ser alterado.
           </p>

@@ -7,3 +7,4 @@ export const COLLECTIONS = {
 
 export const SETTINGS_DOC = "app";
 export const INSTALL_LOCK_DOC = "install-lock";
+export const FIRST_MANAGER_LOCK_DOC = "first-manager-lock";

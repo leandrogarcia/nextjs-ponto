@@ -2,7 +2,7 @@
 
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { FormField } from "@/components/form-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,9 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
-  function onSubmit(form: FormData) {
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
     setError(null);
     start(async () => {
       const auth = clientAuth();
@@ -44,7 +46,7 @@ export function LoginForm() {
   }
 
   return (
-    <form action={onSubmit} className="grid gap-4">
+    <form onSubmit={onSubmit} className="grid gap-4">
       <FormField label="E-mail" htmlFor="email">
         <Input id="email" name="email" type="email" autoComplete="email" required />
       </FormField>

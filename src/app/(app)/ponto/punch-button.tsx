@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import type { EntryType } from "@/lib/hours";
 
-export function PunchButton({ next }: { next: EntryType }) {
+export function PunchButton({ next, dateKey }: { next: EntryType; dateKey: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
 
@@ -16,6 +16,7 @@ export function PunchButton({ next }: { next: EntryType }) {
       try {
         const { entry } = await apiFetch<{ entry: { tipo: EntryType; timestamp: string } }>("/api/ponto", {
           method: "POST",
+          json: { tipo: next, dateKey },
         });
         const hora = new Date(entry.timestamp).toLocaleTimeString("pt-BR", {
           timeZone: "America/Sao_Paulo",
@@ -26,6 +27,7 @@ export function PunchButton({ next }: { next: EntryType }) {
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Erro ao registrar.");
+        router.refresh();
       }
     });
   }

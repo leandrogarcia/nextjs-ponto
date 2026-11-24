@@ -2,7 +2,7 @@ import { FieldValue, type Timestamp } from "firebase-admin/firestore";
 import { AppError, toAppError } from "../errors";
 import { assignableRoles, isRole, type Role } from "../roles";
 import type { CreateUserInput, UpdateUserInput } from "../schemas";
-import { COLLECTIONS } from "./collections";
+import { COLLECTIONS, FIRST_MANAGER_LOCK_DOC } from "./collections";
 import type { Deps } from "./deps";
 
 export interface AppUser {
@@ -58,6 +58,14 @@ export async function createUser(deps: Deps, actor: Actor, input: CreateUserInpu
     );
   }
 
+  // Trava para duas requisições simultâneas do root não criarem dois gerentes.
+  const lockRef = actor.perfil === "root" ? db.collection(COLLECTIONS.settings).doc(FIRST_MANAGER_LOCK_DOC) : null;
+  if (lockRef) {
+    await lockRef.create({ criadoEm: FieldValue.serverTimestamp() }).catch(() => {
+      throw new AppError(403, "O root só pode cadastrar o primeiro gerente.");
+    });
+  }
+
   let uid: string | undefined;
   try {
     const record = await auth.createUser({ email: input.email, password: input.senha, displayName: input.nome });
@@ -74,6 +82,7 @@ export async function createUser(deps: Deps, actor: Actor, input: CreateUserInpu
     return (await getUser(deps, uid))!;
   } catch (err) {
     if (uid) await auth.deleteUser(uid).catch(() => undefined);
+    if (lockRef) await lockRef.delete().catch(() => undefined);
     throw toAppError(err);
   }
 }

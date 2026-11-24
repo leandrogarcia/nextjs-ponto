@@ -10,7 +10,7 @@ const SESSION_COOKIE = "__session";
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (isPublicPath(pathname)) return NextResponse.next();
+  if (pathname === "/" || isPublicPath(pathname)) return NextResponse.next();
 
   const cookie = request.cookies.get(SESSION_COOKIE)?.value;
   const login = NextResponse.redirect(new URL("/login", request.url));

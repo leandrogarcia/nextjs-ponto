@@ -30,6 +30,27 @@ describe("usuários", () => {
     ).rejects.toMatchObject({ status: 403 });
   });
 
+  it("root cria só um gerente mesmo com requisições simultâneas", async () => {
+    const { deps, root } = await setup();
+    const results = await Promise.allSettled(
+      ["a", "b", "c"].map((n) =>
+        createUser(deps, root, { nome: n, email: `${n}@x.com`, senha: "123456", perfil: "gerencia" }),
+      ),
+    );
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(await listUsers(deps, { perfil: "gerencia" })).toHaveLength(1);
+  });
+
+  it("root pode tentar de novo se o cadastro do gerente falhar", async () => {
+    const { deps, root } = await setup();
+    await deps.auth.createUser({ email: "dup@x.com", password: "123456" });
+    await expect(
+      createUser(deps, root, { nome: "G", email: "dup@x.com", senha: "123456", perfil: "gerencia" }),
+    ).rejects.toMatchObject({ status: 409 });
+    const g = await createUser(deps, root, { nome: "G", email: "g@x.com", senha: "123456", perfil: "gerencia" });
+    expect(g.perfil).toBe("gerencia");
+  });
+
   it("gerente cria, edita, desativa e exclui funcionários", async () => {
     const { deps, root } = await setup();
     const g = await createUser(deps, root, { nome: "Gerente", email: "g@x.com", senha: "123456", perfil: "gerencia" });

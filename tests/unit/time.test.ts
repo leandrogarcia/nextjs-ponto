@@ -43,6 +43,8 @@ describe("intervalos de datas", () => {
   it("valida chaves", () => {
     expect(isDateKey("2026-02-29")).toBe(false);
     expect(isDateKey("2026-11-23")).toBe(true);
+    expect(isDateKey("9999-12-31")).toBe(false);
+    expect(isDateKey("0001-01-01")).toBe(false);
     expect(isMonthKey("2026-13")).toBe(false);
     expect(isMonthKey("2026-11")).toBe(true);
   });

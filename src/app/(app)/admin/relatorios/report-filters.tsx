@@ -20,7 +20,11 @@ export function ReportFilters({
       <CardContent>
         <form
           className="grid items-end gap-3 sm:grid-cols-[1fr_auto_auto_auto]"
-          action={(form) => router.push(`/admin/relatorios?${new URLSearchParams(form as unknown as Record<string, string>)}`)}
+          onSubmit={(event) => {
+            event.preventDefault();
+            const form = new FormData(event.currentTarget);
+            router.push(`/admin/relatorios?${new URLSearchParams(form as unknown as Record<string, string>)}`);
+          }}
         >
           <FormField label="Funcionário" htmlFor="uid">
             <NativeSelect id="uid" name="uid" defaultValue={initial.uid} required>

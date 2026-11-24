@@ -31,6 +31,21 @@ describe("marcações de ponto", () => {
     ]);
   });
 
+  it("recusa a marcação quando a tela mostrava outro dia ou outra ação", async () => {
+    const deps = testDeps();
+    await recordPunch(deps, "u1", new Date("2026-11-24T02:50:00Z")); // 23:50 do dia 23
+    // tela de 23/11 oferecendo saída, clique já em 24/11
+    await expect(
+      recordPunch(deps, "u1", new Date("2026-11-24T03:05:00Z"), { tipo: "saida", dateKey: "2026-11-23" }),
+    ).rejects.toMatchObject({ status: 409 });
+    await expect(
+      recordPunch(deps, "u1", new Date("2026-11-24T03:05:00Z"), { tipo: "saida", dateKey: "2026-11-24" }),
+    ).rejects.toMatchObject({ status: 409 });
+    const ok = await recordPunch(deps, "u1", new Date("2026-11-24T03:05:00Z"), { tipo: "entrada", dateKey: "2026-11-24" });
+    expect(ok).toMatchObject({ tipo: "entrada", dateKey: "2026-11-24" });
+    expect(await listDayEntries(deps, "u1", "2026-11-24")).toHaveLength(1);
+  });
+
   it("lista o mês atual e meses anteriores separadamente", async () => {
     const deps = testDeps();
     await recordPunch(deps, "u1", new Date("2026-10-31T11:00:00Z"));
