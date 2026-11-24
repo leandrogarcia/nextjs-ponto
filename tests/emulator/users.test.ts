@@ -51,6 +51,19 @@ describe("usuários", () => {
     expect(g.perfil).toBe("gerencia");
   });
 
+  it("root retoma uma trava antiga deixada por cadastro interrompido", async () => {
+    const { deps, root } = await setup();
+    const { Timestamp } = await import("firebase-admin/firestore");
+    const lock = deps.db.doc("settings/first-manager-lock");
+    await lock.set({ criadoEm: Timestamp.now() });
+    await expect(
+      createUser(deps, root, { nome: "G", email: "g@x.com", senha: "123456", perfil: "gerencia" }),
+    ).rejects.toMatchObject({ status: 403 });
+    await lock.set({ criadoEm: Timestamp.fromMillis(Date.now() - 5 * 60 * 1000) });
+    const g = await createUser(deps, root, { nome: "G", email: "g@x.com", senha: "123456", perfil: "gerencia" });
+    expect(g.perfil).toBe("gerencia");
+  });
+
   it("gerente cria, edita, desativa e exclui funcionários", async () => {
     const { deps, root } = await setup();
     const g = await createUser(deps, root, { nome: "Gerente", email: "g@x.com", senha: "123456", perfil: "gerencia" });

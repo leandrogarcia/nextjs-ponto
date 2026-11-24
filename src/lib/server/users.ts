@@ -1,4 +1,4 @@
-import { FieldValue, type Timestamp } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { AppError, toAppError } from "../errors";
 import { assignableRoles, isRole, type Role } from "../roles";
 import type { CreateUserInput, UpdateUserInput } from "../schemas";
@@ -48,6 +48,8 @@ export async function hasManager({ db }: Pick<Deps, "db">) {
   return !snap.empty;
 }
 
+const FIRST_MANAGER_LOCK_TTL_MS = 2 * 60 * 1000;
+
 export async function createUser(deps: Deps, actor: Actor, input: CreateUserInput) {
   const { db, auth } = deps;
   const allowed = assignableRoles(actor.perfil, actor.perfil === "root" ? await hasManager(deps) : true);
@@ -60,9 +62,15 @@ export async function createUser(deps: Deps, actor: Actor, input: CreateUserInpu
 
   // Trava para duas requisições simultâneas do root não criarem dois gerentes.
   const lockRef = actor.perfil === "root" ? db.collection(COLLECTIONS.settings).doc(FIRST_MANAGER_LOCK_DOC) : null;
+  // Uma trava antiga sem gerente salvo (requisição interrompida) pode ser retomada.
   if (lockRef) {
-    await lockRef.create({ criadoEm: FieldValue.serverTimestamp() }).catch(() => {
-      throw new AppError(403, "O root só pode cadastrar o primeiro gerente.");
+    await db.runTransaction(async (tx) => {
+      const lock = await tx.get(lockRef);
+      const since = (lock.get("criadoEm") as Timestamp | undefined)?.toMillis() ?? 0;
+      if (lock.exists && Date.now() - since < FIRST_MANAGER_LOCK_TTL_MS) {
+        throw new AppError(403, "O root só pode cadastrar o primeiro gerente.");
+      }
+      tx.set(lockRef, { criadoEm: Timestamp.now() });
     });
   }
 
