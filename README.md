@@ -10,9 +10,10 @@ Fuso: `America/Sao_Paulo`. Horas esperadas por dia útil = jornada semanal ÷ 5 
 
 ## Desenvolvimento local (emuladores, sem credenciais)
 
-Requer Node 22+ e Java 21+ (para o emulador do Firestore).
+Requer Node 22 (fixado em `.nvmrc` e em `engines`) e Java 21+ (para o emulador do Firestore).
 
 ```bash
+nvm use               # Node 22
 npm install
 npm run dev:emulators   # emuladores Auth/Firestore + next dev com .env.emulator
 ```
@@ -43,7 +44,7 @@ Veja `.env.example`.
 1. No Firebase: crie o projeto, ative **Authentication > E-mail/senha** e o **Firestore** (região de preferência `southamerica-east1`).
 2. Publique regras e índices: `npx firebase deploy --only firestore:rules,firestore:indexes --project <id>`.
 3. Gere uma chave de conta de serviço (Configurações > Contas de serviço) e registre um app Web para obter a configuração pública.
-4. Na Vercel, importe o repositório e configure as variáveis acima (em `FIREBASE_PRIVATE_KEY`, cole a chave com `\n`).
+4. Na Vercel, importe o repositório e configure as variáveis acima (em `FIREBASE_PRIVATE_KEY`, cole a chave com `\n`). A Vercel usa o Node 22 definido em `engines` no `package.json`.
 5. Após o deploy, acesse `/install` com o `INSTALL_SECRET`, crie o root e, com ele, o primeiro gerente.
 
 A instalação só roda uma vez (trava `settings/install-lock`). Todas as escritas passam pelos Route Handlers; as regras do Firestore negam qualquer escrita do cliente.
